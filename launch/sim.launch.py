@@ -55,19 +55,17 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import SetParameter
 
 def generate_launch_description():
-    use_sim_time_arg = DeclareLaunchArgument(
-        'use_sim_time', default_value='true',
-        description='Use simulation (Gazebo) clock if true')
-
-    gazebo_launch_file = os.path.join(
-        get_package_share_directory('gazebo_ros'), 'launch', 'gazebo.launch.py')
-
     gazebo = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(gazebo_launch_file),
-        launch_arguments={'use_sim_time': LaunchConfiguration('use_sim_time')}.items(),
+        PythonLaunchDescriptionSource(os.path.join(
+            get_package_share_directory('hsrb_gazebo_bringup'), 'launch', 'gazebo_bringup.launch.py'))
+    )
+
+    hsr = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(
+            get_package_share_directory('hsrb_gazebo_bringup'), 'launch', 'spawn_hsrb.launch.py'))
     )
 
     return LaunchDescription([
-        use_sim_time_arg,
-        gazebo
+        gazebo,
+        hsr
     ])

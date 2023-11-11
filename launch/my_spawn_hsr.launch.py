@@ -33,6 +33,7 @@ from launch.actions import (
     DeclareLaunchArgument,
     ExecuteProcess,
     RegisterEventHandler,
+    IncludeLaunchDescription
 )
 from launch.event_handlers import OnProcessExit
 from launch.substitutions import (
@@ -43,6 +44,7 @@ from launch.substitutions import (
 )
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 
 def load_robot_description():
@@ -52,13 +54,13 @@ def load_robot_description():
     robot_description_content = Command(
         [PathJoinSubstitution([FindExecutable(name='xacro')]), ' ',
          PathJoinSubstitution([FindPackageShare(description_package), 'robots', description_file]), ' ',
-         'gazebo_sim:=True'])
+         'use_gazebo_classic:=true'])
     return {'robot_description': robot_description_content}
 
 
 def get_loading_controller_process(controller_name, output='screen'):
     return ExecuteProcess(
-        cmd=['ros2', 'control', 'load_controller', '-s', 'active', controller_name],
+        cmd=['ros2', 'control', 'load_start_controller', controller_name],
         output=output)
 
 
@@ -83,9 +85,19 @@ def declare_arguments():
 def generate_launch_description():
     robot_description = load_robot_description()
 
-    spawn_entity = Node(
-        package='gazebo_ros', executable='spawn_entity.py', output='screen',
-        arguments=['-topic', 'robot_description', '-entity', 'hsrb'])
+    gazebo = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            [PathJoinSubstitution([FindPackageShare("gazebo_ros"), "launch", "gazebo.launch.py"])]
+        ),
+        launch_arguments={"verbose": "false"}.items(),
+    )
+
+    control_node = Node(
+        package="controller_manager",
+        executable="ros2_control_node",
+        parameters=[robot_description, []],
+        output="both",
+    )
 
     load_joint_state_controller = get_loading_controller_process('joint_state_controller')
     load_head_trajectory_controller = get_loading_controller_process('head_trajectory_controller')
@@ -116,25 +128,41 @@ def generate_launch_description():
                                  output={'both': 'log'},
                                  remappings=[('robot_description', '/robot_description')])
 
-    static_transform_publishers = [
+    spawn_entity = Node(
+        package='gazebo_ros', executable='spawn_entity.py', output='screen',
+        arguments=['-topic', 'robot_description', '-entity', 'hsrb'])
+
+    delay_load_controller = RegisterEventHandler(
+        event_handler=OnProcessExit(
+            target_action=spawn_entity,
+            on_exit=[load_joint_state_controller,
+                    load_head_trajectory_controller,
+                    load_arm_trajectory_controller,
+                    load_omni_base_controller,
+                    joint_state_publisher,
+                    robot_state_publisher,])
+    )
+
+
+    joint_state_broadcaster_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=["joint_state_broadcaster", "--controller-manager", "/controller_manager"],
+    )
+
+    nodes = [
+        gazebo,
+        # control_node,
+        # odom_relay_node,
+        # wheel_odom_connector_tf,
+        spawn_entity,
+        # joint_state_broadcaster_spawner,
+        # delay_load_controller,
+
         make_static_transform_publisher('head_l_stereo_camera_link', 'head_l_stereo_camera_frame'),
         make_static_transform_publisher('head_r_stereo_camera_link', 'head_r_stereo_camera_frame'),
         make_static_transform_publisher('head_rgbd_sensor_link', 'head_rgbd_sensor_rgb_frame'),
-        make_static_transform_publisher('head_rgbd_sensor_link', 'head_rgbd_sensor_depth_frame')]
+        make_static_transform_publisher('head_rgbd_sensor_link', 'head_rgbd_sensor_depth_frame')
+    ]
 
-    return LaunchDescription(
-        declare_arguments()
-        + [RegisterEventHandler(
-            event_handler=OnProcessExit(target_action=spawn_entity,
-                                        on_exit=[load_joint_state_controller,
-                                                 load_head_trajectory_controller,
-                                                 load_arm_trajectory_controller,
-                                                 load_omni_base_controller])),
-            joint_state_publisher, robot_state_publisher, spawn_entity, odom_relay_node, wheel_odom_connector_tf]
-        )
-
-    # return LaunchDescription(
-    #     declare_arguments()
-    #     + [
-    #         robot_state_publisher, spawn_entity]
-    #     + static_transform_publishers)
+    return LaunchDescription(declare_arguments() + nodes)
