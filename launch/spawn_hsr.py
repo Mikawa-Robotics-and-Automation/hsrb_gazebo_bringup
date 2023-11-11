@@ -90,7 +90,7 @@ def generate_launch_description():
         package='gazebo_ros', executable='spawn_entity.py', output='screen',
         arguments=['-topic', 'robot_description', '-entity', 'hsrb'])
 
-    load_joint_state_controller = get_loading_controller_process('joint_state_controller')
+    load_joint_state_broadcaster = get_loading_controller_process('joint_state_broadcaster')
     load_head_trajectory_controller = get_loading_controller_process('head_trajectory_controller')
     load_arm_trajectory_controller = get_loading_controller_process('arm_trajectory_controller')
     load_omni_base_controller = get_loading_controller_process('omni_base_controller')
@@ -131,7 +131,7 @@ def generate_launch_description():
         declare_arguments()
         + [RegisterEventHandler(
             event_handler=OnProcessExit(target_action=spawn_entity,
-                                        on_exit=[load_joint_state_controller,
+                                        on_exit=[load_joint_state_broadcaster,
                                                  load_head_trajectory_controller,
                                                  load_arm_trajectory_controller,
                                                  load_omni_base_controller])),
