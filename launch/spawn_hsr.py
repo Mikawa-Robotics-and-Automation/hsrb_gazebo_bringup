@@ -68,7 +68,10 @@ def make_static_transform_publisher(parent_frame, child_frame):
                 executable='static_transform_publisher',
                 name=node_name,
                 output='log',
-                arguments=['0.0', '0.0', '0.0', '0.0', '0.0', '0.0', parent_frame, child_frame])
+                arguments=['--x', '0.0', '--y', '0.0', '--z', '0.0',
+                           '--qx', '0.0', '--qy', '0.0', '--qz', '0.0',
+                           '--frame-id', parent_frame,
+                           '--child-frame-id', child_frame])
 
 
 def declare_arguments():
@@ -102,8 +105,10 @@ def generate_launch_description():
                                    executable='static_transform_publisher',
                                    name='static_transform_publisher',
                                    output='log',
-                                   arguments=['0.0', '0.0', '0.0', '0.0', '0.0', '0.0',
-                                              'base_footprint_wheel', 'base_footprint'])
+                                   arguments=['--x', '0.0', '--y', '0.0', '--z', '0.0',
+                                              '--qx', '0.0', '--qy', '0.0', '--qz', '0.0',
+                                              '--frame-id', 'base_footprint_wheel',
+                                              '--child-frame-id', 'base_footprint'])
     joint_state_publisher = Node(package='joint_state_publisher',
                                  executable='joint_state_publisher',
                                  parameters=[{'source_list': ['/joint_states'], 'use_sim_time': True}],
