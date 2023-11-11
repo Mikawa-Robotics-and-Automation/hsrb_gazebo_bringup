@@ -58,7 +58,7 @@ def load_robot_description():
 
 def get_loading_controller_process(controller_name, output='screen'):
     return ExecuteProcess(
-        cmd=['ros2', 'control', 'load_controller', '-s', 'active', controller_name],
+        cmd=['ros2', 'control', 'load_controller', '-s', '--set-state', 'active', controller_name],
         output=output)
 
 
