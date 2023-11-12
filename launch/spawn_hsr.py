@@ -58,7 +58,7 @@ def load_robot_description():
 
 def get_loading_controller_process(controller_name, output='screen'):
     return ExecuteProcess(
-        cmd=['ros2', 'control', 'load_controller', '-s', 'active', controller_name],
+        cmd=['ros2', 'control', 'load_controller', '-s', '--set-state', 'active', controller_name],
         output=output)
 
 
@@ -68,7 +68,10 @@ def make_static_transform_publisher(parent_frame, child_frame):
                 executable='static_transform_publisher',
                 name=node_name,
                 output='log',
-                arguments=['0.0', '0.0', '0.0', '0.0', '0.0', '0.0', parent_frame, child_frame])
+                arguments=['--x', '0.0', '--y', '0.0', '--z', '0.0',
+                           '--qx', '0.0', '--qy', '0.0', '--qz', '0.0',
+                           '--frame-id', parent_frame,
+                           '--child-frame-id', child_frame])
 
 
 def declare_arguments():
@@ -87,7 +90,7 @@ def generate_launch_description():
         package='gazebo_ros', executable='spawn_entity.py', output='screen',
         arguments=['-topic', 'robot_description', '-entity', 'hsrb'])
 
-    load_joint_state_controller = get_loading_controller_process('joint_state_controller')
+    load_joint_state_broadcaster = get_loading_controller_process('joint_state_broadcaster')
     load_head_trajectory_controller = get_loading_controller_process('head_trajectory_controller')
     load_arm_trajectory_controller = get_loading_controller_process('arm_trajectory_controller')
     load_omni_base_controller = get_loading_controller_process('omni_base_controller')
@@ -102,8 +105,10 @@ def generate_launch_description():
                                    executable='static_transform_publisher',
                                    name='static_transform_publisher',
                                    output='log',
-                                   arguments=['0.0', '0.0', '0.0', '0.0', '0.0', '0.0',
-                                              'base_footprint_wheel', 'base_footprint'])
+                                   arguments=['--x', '0.0', '--y', '0.0', '--z', '0.0',
+                                              '--qx', '0.0', '--qy', '0.0', '--qz', '0.0',
+                                              '--frame-id', 'base_footprint_wheel',
+                                              '--child-frame-id', 'base_footprint'])
     joint_state_publisher = Node(package='joint_state_publisher',
                                  executable='joint_state_publisher',
                                  parameters=[{'source_list': ['/joint_states'], 'use_sim_time': True}],
@@ -126,7 +131,7 @@ def generate_launch_description():
         declare_arguments()
         + [RegisterEventHandler(
             event_handler=OnProcessExit(target_action=spawn_entity,
-                                        on_exit=[load_joint_state_controller,
+                                        on_exit=[load_joint_state_broadcaster,
                                                  load_head_trajectory_controller,
                                                  load_arm_trajectory_controller,
                                                  load_omni_base_controller])),
